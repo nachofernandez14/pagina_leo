@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Gestión de stocks y ventas",
+  title: "Agroempaque Omar Fernandez",
   description: "Panel para stocks, ventas diarias, saldos y proveedores.",
 };
 

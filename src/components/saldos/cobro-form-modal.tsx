@@ -4,6 +4,7 @@ import { useEffect, useId, useState } from "react";
 import { crearCobro, type TipoMovimientoCliente } from "@/app/(app)/saldos/actions";
 import { crearCheque } from "@/app/(app)/cheques/actions";
 import { formatArs } from "@/lib/format";
+import { AppSelect } from "@/components/ui/app-select";
 
 type ClienteOption = { id: string; nombre: string };
 
@@ -215,20 +216,15 @@ export function CobroFormModal({
               <label className={labelCls} htmlFor="cb-cliente">
                 Cliente
               </label>
-              <select
+              <AppSelect
                 id="cb-cliente"
                 required
                 value={selectedClienteId}
-                onChange={(e) => setSelectedClienteId(e.target.value)}
+                onChange={setSelectedClienteId}
+                options={clientesDisponibles.map((c) => ({ value: c.id, label: c.nombre }))}
+                placeholder="Seleccioná un cliente…"
                 className={inputCls}
-              >
-                <option value="">Seleccioná un cliente…</option>
-                {clientesDisponibles.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nombre}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
           ) : null}
 

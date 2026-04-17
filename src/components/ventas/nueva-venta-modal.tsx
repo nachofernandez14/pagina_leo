@@ -8,6 +8,7 @@ import {
 } from "@/app/(app)/ventas-diarias/actions";
 import { stockDisponibleProducto } from "@/app/(app)/productos/stock-puesto-actions";
 import { calcularTotalVenta, formatArs } from "@/lib/format";
+import { AppSelect } from "@/components/ui/app-select";
 
 type NuevaVentaModalProps = {
   open: boolean;
@@ -204,43 +205,39 @@ export function NuevaVentaModal({
             <label className="text-sm font-medium text-violet-950" htmlFor="nv-cliente">
               Cliente
             </label>
-            <select
+            <AppSelect
               id="nv-cliente"
               value={clienteId}
-              onChange={(e) => setClienteId(e.target.value)}
+              onChange={setClienteId}
+              options={[
+                { value: "", label: "Sin cliente" },
+                ...clientes.map((c) => ({ value: c.id, label: c.nombre })),
+              ]}
+              placeholder="Sin cliente"
               className="mt-1 w-full rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm text-violet-950 outline-none focus:ring-2 focus:ring-violet-500/40"
-            >
-              <option value="">Sin cliente</option>
-              {clientes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nombre}
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
           <div>
             <label className="text-sm font-medium text-violet-950" htmlFor="nv-producto">
               Producto
             </label>
-            <select
+            <AppSelect
               id="nv-producto"
               required
               value={productoId}
-              onChange={(e) => setProductoId(e.target.value)}
+              onChange={setProductoId}
+              options={
+                productos.length === 0
+                  ? [{ value: "", label: "— Sin productos —" }]
+                  : productos.map((p) => ({
+                      value: p.id,
+                      label: p.nombre + (p.embalaje_nombre ? ` · ${p.embalaje_nombre}` : ""),
+                    }))
+              }
+              placeholder="— Sin productos —"
               className="mt-1 w-full rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm text-violet-950 outline-none focus:ring-2 focus:ring-violet-500/40"
-            >
-              {productos.length === 0 ? (
-                <option value="">— Sin productos —</option>
-              ) : (
-                productos.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nombre}
-                    {p.embalaje_nombre ? ` · ${p.embalaje_nombre}` : ""}
-                  </option>
-                ))
-              )}
-            </select>
+            />
             {productoId ? (() => {
               const prod = productos.find((x) => x.id === productoId);
               return prod?.embalaje_nombre ? (

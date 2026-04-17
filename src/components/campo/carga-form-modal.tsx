@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useState } from "react";
 import { crearCarga } from "@/app/(app)/campo/actions";
+import { AppSelect } from "@/components/ui/app-select";
 
 type ProductoOption = { id: string; nombre: string };
 
@@ -131,21 +132,19 @@ export function CargaFormModal({
           </div>
           <div>
             <label className={labelCls} htmlFor="ca-producto">Producto</label>
-            <select
+            <AppSelect
               id="ca-producto"
               required
               value={productoId}
-              onChange={(e) => setProductoId(e.target.value)}
+              onChange={setProductoId}
+              options={
+                productos.length === 0
+                  ? [{ value: "", label: "— Sin productos —" }]
+                  : productos.map((p) => ({ value: p.id, label: p.nombre }))
+              }
+              placeholder="— Sin productos —"
               className={inputCls}
-            >
-              {productos.length === 0 ? (
-                <option value="">— Sin productos —</option>
-              ) : (
-                productos.map((p) => (
-                  <option key={p.id} value={p.id}>{p.nombre}</option>
-                ))
-              )}
-            </select>
+            />
           </div>
 
           <div>

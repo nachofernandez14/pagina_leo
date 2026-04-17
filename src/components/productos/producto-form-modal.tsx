@@ -7,6 +7,7 @@ import {
   type EmbalajeOption,
   type ProductoFila,
 } from "@/app/(app)/productos/actions";
+import { AppSelect } from "@/components/ui/app-select";
 
 type Modo = "crear" | "editar";
 
@@ -143,19 +144,17 @@ export function ProductoFormModal({
             <label className="text-sm font-medium text-violet-950" htmlFor="pf-embalaje">
               Embalaje
             </label>
-            <select
+            <AppSelect
               id="pf-embalaje"
               value={embalajeId}
-              onChange={(e) => setEmbalajeId(e.target.value)}
+              onChange={setEmbalajeId}
+              options={[
+                { value: "", label: "Sin embalaje" },
+                ...embalajes.map((em) => ({ value: em.id, label: em.nombre })),
+              ]}
+              placeholder="Sin embalaje"
               className="mt-1 w-full rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm text-violet-950 outline-none focus:ring-2 focus:ring-violet-500/40"
-            >
-              <option value="">Sin embalaje</option>
-              {embalajes.map((em) => (
-                <option key={em.id} value={em.id}>
-                  {em.nombre}
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
           <div>

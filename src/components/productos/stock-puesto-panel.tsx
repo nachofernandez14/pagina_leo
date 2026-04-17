@@ -11,6 +11,7 @@ import {
 } from "@/app/(app)/productos/stock-puesto-actions";
 import { listarProductosTodos } from "@/app/(app)/productos/actions";
 import { ConfirmModal } from "@/components/confirm-modal";
+import { AppSelect } from "@/components/ui/app-select";
 
 type ProductoOption = { id: string; nombre: string };
 
@@ -201,21 +202,19 @@ function NuevoMovimientoModal({
           {/* Producto */}
           <div>
             <label className={labelCls} htmlFor="sp-producto">Producto</label>
-            <select
+            <AppSelect
               id="sp-producto"
               required
               value={productoId}
-              onChange={(e) => setProductoId(e.target.value)}
+              onChange={setProductoId}
+              options={
+                productos.length === 0
+                  ? [{ value: "", label: "— Sin productos activos —" }]
+                  : productos.map((p) => ({ value: p.id, label: p.nombre }))
+              }
+              placeholder="— Sin productos activos —"
               className={inputCls}
-            >
-              {productos.length === 0 ? (
-                <option value="">— Sin productos activos —</option>
-              ) : (
-                productos.map((p) => (
-                  <option key={p.id} value={p.id}>{p.nombre}</option>
-                ))
-              )}
-            </select>
+            />
           </div>
 
           {/* Cantidad */}
@@ -502,26 +501,28 @@ export function StockPuestoPanel({ onVolver }: { onVolver: () => void }) {
         <div className="flex flex-col gap-3 border-b border-violet-100 bg-violet-50/80 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-sm font-semibold text-violet-950">Historial de movimientos</h2>
           <div className="flex flex-wrap gap-2">
-            <select
+            <AppSelect
               value={filtroProducto}
-              onChange={(e) => setFiltroProducto(e.target.value)}
+              onChange={setFiltroProducto}
+              options={[
+                { value: "todos", label: "Todos los productos" },
+                ...productos.map((p) => ({ value: p.id, label: p.nombre })),
+              ]}
+              containerClassName="relative"
               className="rounded-lg border border-violet-200 bg-white px-2.5 py-1.5 text-xs text-violet-800 outline-none focus:ring-2 focus:ring-violet-400/40"
-            >
-              <option value="todos">Todos los productos</option>
-              {productos.map((p) => (
-                <option key={p.id} value={p.id}>{p.nombre}</option>
-              ))}
-            </select>
-            <select
+            />
+            <AppSelect
               value={filtroTipo}
-              onChange={(e) => setFiltroTipo(e.target.value)}
+              onChange={setFiltroTipo}
+              options={[
+                { value: "todos", label: "Todos los tipos" },
+                { value: "ingreso", label: "Ingresos" },
+                { value: "egreso", label: "Egresos (ventas)" },
+                { value: "perdida", label: "Pérdidas" },
+              ]}
+              containerClassName="relative"
               className="rounded-lg border border-violet-200 bg-white px-2.5 py-1.5 text-xs text-violet-800 outline-none focus:ring-2 focus:ring-violet-400/40"
-            >
-              <option value="todos">Todos los tipos</option>
-              <option value="ingreso">Ingresos</option>
-              <option value="egreso">Egresos (ventas)</option>
-              <option value="perdida">Pérdidas</option>
-            </select>
+            />
           </div>
         </div>
 
