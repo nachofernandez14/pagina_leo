@@ -1,0 +1,18 @@
+Necesito armar una pagina web, la cual va a ser para un cliente que maneja stocks, ventas diarias y saldos por demas. Los tacks que vamos a utilizar va a ser:
+-Node
+-Next JS
+Y para la base de datos vamos a utilizar supabase con Postgres.
+Te voy a dejar el logo_leo aca en la raiz del proyecto y despues movelo a la carpeta en donde vas a colocar las img y demas. El tono de los colores de la pagina 
+Ya definido el stack vamos a pasar con las secciones, primero vamos a realizar un login el cual se va a manejar con la base de datos de supabase, cuando hagas el login me vas a dejar en un archivo md los campos de la tabla usuarios de la base de datos. Esto lo vas a trabajar bien ya que necesito que sea seguro para el cliente y va a funcionar asi, yo le voy a dar una cuenta al cliente y ahi va a iniciar sesion, nada de crear usuarios y demas.
+Despues vamos a generar una vista de la aplicacion en si en la cual va a haber como una especie de navbar vertical el cual va a tener las siguiente opciones:
+-Dashboard
+-Ventas diarias
+-Pagos diarios
+-saldos
+-Proveedores
+-campo
+-Cheques
+
+Por defecto se va a ver la vista del dashboard, y hasta aca vamos a hacer, despues vamos a enfocarnos en cada una de las vistas.
+
+Quiero que realices esto de manera ordenada y comentando todo ordenadito y dejando todo listo para el uso

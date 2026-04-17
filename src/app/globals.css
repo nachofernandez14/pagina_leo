@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+/*
+ * Paleta: violetas (marca ciruelas); acento principal en --accent.
+ * El sidebar en app usa gradiente violeta en el componente; --sidebar queda como respaldo.
+ */
+:root {
+  --background: #f1f5f9;
+  --foreground: #0f172a;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --surface: #ffffff;
+  --sidebar: #0f172a;
+  --accent: #6d28d9;
+  --accent-foreground: #faf5ff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}

@@ -1,0 +1,351 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+
+// ─── Tipos ────────────────────────────────────────────────────────────────────
+
+export type ClienteFila = {
+  id: string;
+  nombre: string;
+  telefono: string | null;
+  notas: string | null;
+  activo: boolean;
+  created_at: string;
+};
+
+export type ClienteConSaldo = ClienteFila & {
+  total_ventas: number;
+  total_cobros: number;
+  /** Positivo = el cliente nos debe. Negativo = le devolvemos (saldo a favor del cliente). */
+  saldo: number;
+};
+
+export type ClienteInput = {
+  nombre: string;
+  telefono: string | null;
+  notas: string | null;
+};
+
+export type TipoMovimientoCliente = "efectivo" | "transferencia" | "cheque";
+
+export type CobroFila = {
+  id: string;
+  fecha: string;
+  cliente_id: string;
+  movimiento: TipoMovimientoCliente;
+  monto: number;
+  notas: string | null;
+  created_at: string;
+};
+
+export type CobroInput = {
+  fecha: string;
+  cliente_id: string;
+  movimiento: TipoMovimientoCliente;
+  monto: number;
+  notas: string | null;
+};
+
+export type VentaDeCliente = {
+  id: string;
+  fecha: string;
+  producto_nombre: string;
+  cantidad_cajas: number;
+  precio_unitario: number;
+  total: number;
+  created_at: string;
+};
+
+export type MovimientosCliente = {
+  ventas: VentaDeCliente[];
+  cobros: CobroFila[];
+};
+
+// ─── Helper ───────────────────────────────────────────────────────────────────
+
+function revalidateClientes() {
+  revalidatePath("/saldos");
+  revalidatePath("/dashboard");
+}
+
+// ─── Listar clientes con saldo calculado ─────────────────────────────────────
+
+export async function listarClientesConSaldo(): Promise<
+  { ok: true; clientes: ClienteConSaldo[] } | { ok: false; error: string }
+> {
+  const supabase = await createClient();
+
+  const [
+    { data: clientes, error: errCli },
+    { data: ventas, error: errVentas },
+    { data: cobros, error: errCobros },
+  ] = await Promise.all([
+    supabase
+      .from("clientes")
+      .select("id, nombre, telefono, notas, activo, created_at")
+      .eq("activo", true)
+      .order("nombre"),
+    supabase.from("ventas").select("cliente_id, total"),
+    supabase.from("cobros").select("cliente_id, monto"),
+  ]);
+
+  if (errCli) return { ok: false, error: errCli.message };
+  if (errVentas) {
+    return {
+      ok: false,
+      error:
+        errVentas.message.includes("relation") || errVentas.code === "42P01"
+          ? "Falta ejecutar el SQL de la sección 8 en Supabase."
+          : errVentas.message,
+    };
+  }
+  if (errCobros) {
+    return {
+      ok: false,
+      error:
+        errCobros.message.includes("relation") || errCobros.code === "42P01"
+          ? "Falta crear la tabla cobros (sección 8b del schema)."
+          : errCobros.message,
+    };
+  }
+
+  const ventasPorCliente = new Map<string, number>();
+  for (const v of ventas ?? []) {
+    if (!v.cliente_id) continue;
+    ventasPorCliente.set(
+      v.cliente_id,
+      (ventasPorCliente.get(v.cliente_id) ?? 0) + Number(v.total),
+    );
+  }
+
+  const cobrosPorCliente = new Map<string, number>();
+  for (const c of cobros ?? []) {
+    cobrosPorCliente.set(
+      c.cliente_id,
+      (cobrosPorCliente.get(c.cliente_id) ?? 0) + Number(c.monto),
+    );
+  }
+
+  const result: ClienteConSaldo[] = (clientes ?? []).map((cli) => {
+    const total_ventas = ventasPorCliente.get(cli.id) ?? 0;
+    const total_cobros = cobrosPorCliente.get(cli.id) ?? 0;
+    return {
+      id: cli.id,
+      nombre: cli.nombre,
+      telefono: (cli as { telefono?: string | null }).telefono ?? null,
+      notas: (cli as { notas?: string | null }).notas ?? null,
+      activo: (cli as { activo?: boolean }).activo ?? true,
+      created_at: cli.created_at,
+      total_ventas,
+      total_cobros,
+      saldo: total_ventas - total_cobros,
+    };
+  });
+
+  return { ok: true, clientes: result };
+}
+
+// ─── Movimientos de un cliente (ventas + cobros) ──────────────────────────────
+
+export async function listarMovimientosCliente(clienteId: string): Promise<
+  | { ok: true; movimientos: MovimientosCliente }
+  | { ok: false; error: string }
+> {
+  const supabase = await createClient();
+
+  const [{ data: ventas, error: errV }, { data: cobros, error: errC }] =
+    await Promise.all([
+      supabase
+        .from("ventas")
+        .select(
+          "id, fecha, cantidad_cajas, precio_unitario, total, created_at, productos ( nombre )",
+        )
+        .eq("cliente_id", clienteId)
+        .order("fecha", { ascending: false }),
+      supabase
+        .from("cobros")
+        .select("*")
+        .eq("cliente_id", clienteId)
+        .order("fecha", { ascending: false }),
+    ]);
+
+  if (errV) return { ok: false, error: errV.message };
+  if (errC) return { ok: false, error: errC.message };
+
+  return {
+    ok: true,
+    movimientos: {
+      ventas: (ventas ?? []).map((v) => ({
+        id: v.id,
+        fecha: v.fecha,
+        producto_nombre:
+          (v.productos as unknown as { nombre: string } | null)?.nombre ?? "—",
+        cantidad_cajas: v.cantidad_cajas,
+        precio_unitario: Number(v.precio_unitario),
+        total: Number(v.total),
+        created_at: v.created_at,
+      })),
+      cobros: (cobros ?? []).map((c) => ({
+        id: c.id,
+        fecha: c.fecha,
+        cliente_id: c.cliente_id,
+        movimiento: c.movimiento as TipoMovimientoCliente,
+        monto: Number(c.monto),
+        notas: c.notas ?? null,
+        created_at: c.created_at,
+      })),
+    },
+  };
+}
+
+// ─── CRUD clientes ────────────────────────────────────────────────────────────
+
+export async function crearCliente(
+  input: ClienteInput,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const nombre = input.nombre.trim();
+  if (!nombre) return { ok: false, error: "El nombre es obligatorio." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("clientes").insert({
+    nombre,
+    telefono: input.telefono?.trim() || null,
+    notas: input.notas?.trim() || null,
+  });
+
+  if (error) return { ok: false, error: error.message };
+  revalidateClientes();
+  return { ok: true };
+}
+
+export async function actualizarCliente(
+  input: ClienteInput & { id: string },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const nombre = input.nombre.trim();
+  if (!nombre) return { ok: false, error: "El nombre es obligatorio." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("clientes")
+    .update({
+      nombre,
+      telefono: input.telefono?.trim() || null,
+      notas: input.notas?.trim() || null,
+    })
+    .eq("id", input.id);
+
+  if (error) return { ok: false, error: error.message };
+  revalidateClientes();
+  return { ok: true };
+}
+
+export async function eliminarCliente(
+  id: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  // Borrado lógico: preserva las ventas históricas
+  const { error } = await supabase
+    .from("clientes")
+    .update({ activo: false })
+    .eq("id", id);
+
+  if (error) return { ok: false, error: error.message };
+  revalidateClientes();
+  return { ok: true };
+}
+
+// ─── Cobros ───────────────────────────────────────────────────────────────────
+
+export async function crearCobro(
+  input: CobroInput,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!input.fecha || !/^\d{4}-\d{2}-\d{2}$/.test(input.fecha)) {
+    return { ok: false, error: "Fecha inválida." };
+  }
+  if (!input.cliente_id) return { ok: false, error: "Cliente inválido." };
+  const monto = Number(input.monto);
+  if (!Number.isFinite(monto) || monto <= 0) {
+    return { ok: false, error: "El monto debe ser mayor a 0." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("cobros").insert({
+    fecha: input.fecha,
+    cliente_id: input.cliente_id,
+    movimiento: input.movimiento,
+    monto,
+    notas: input.notas?.trim() || null,
+  });
+
+  if (error) {
+    return {
+      ok: false,
+      error:
+        error.message.includes("relation") || error.code === "42P01"
+          ? "Falta crear la tabla cobros (sección 8b del schema)."
+          : error.message,
+    };
+  }
+  revalidateClientes();
+  return { ok: true };
+}
+
+export async function eliminarCobro(
+  id: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("cobros").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidateClientes();
+  return { ok: true };
+}
+
+// ─── Listar clientes activos (para selectores) ────────────────────────────────
+
+export async function listarClientesActivos(): Promise<
+  { ok: true; clientes: { id: string; nombre: string }[] } | { ok: false; error: string }
+> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("clientes")
+    .select("id, nombre")
+    .eq("activo", true)
+    .order("nombre");
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, clientes: (data ?? []).map((c) => ({ id: c.id, nombre: c.nombre })) };
+}
+
+// ─── Listar cobros por fecha ──────────────────────────────────────────────────
+
+export type CobroConCliente = CobroFila & { cliente_nombre: string };
+
+export async function listarCobrosPorFecha(
+  fecha: string,
+): Promise<{ ok: true; cobros: CobroConCliente[] } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("cobros")
+    .select("id, fecha, cliente_id, movimiento, monto, notas, created_at, clientes ( nombre )")
+    .eq("fecha", fecha)
+    .order("created_at", { ascending: false });
+
+  if (error) return { ok: false, error: error.message };
+
+  const cobros: CobroConCliente[] = (data ?? []).map((row) => {
+    const cliObj = Array.isArray(row.clientes) ? row.clientes[0] : row.clientes;
+    return {
+      id: row.id,
+      fecha: row.fecha,
+      cliente_id: row.cliente_id,
+      movimiento: row.movimiento as TipoMovimientoCliente,
+      monto: Number(row.monto),
+      notas: row.notas ?? null,
+      created_at: row.created_at,
+      cliente_nombre: (cliObj as { nombre?: string } | null)?.nombre ?? "Sin cliente",
+    };
+  });
+
+  return { ok: true, cobros };
+}
+
