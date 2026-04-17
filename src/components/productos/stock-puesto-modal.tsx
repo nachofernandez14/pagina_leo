@@ -83,8 +83,7 @@ export function StockPuestoModal({ open, onClose, productoId, productoNombre, st
     const resList = await listarMovimientosPuesto(productoId);
     if (resList.ok) {
       setIngresos(resList.movimientos.filter((m) => m.tipo === "ingreso"));
-      const totalIngresado = resList.ingresos.reduce((acc, i) => acc + i.cantidad, 0);
-      // stockActual = ingresado - vendido; como solo cambió ingresado, sumamos la diferencia
+      // stockActual se actualiza sumando la cantidad recién ingresada
       setStockActual((prev) => prev + (parseInt(cantidad, 10) || 0));
     }
     setVista("resumen");
@@ -117,6 +116,7 @@ export function StockPuestoModal({ open, onClose, productoId, productoNombre, st
   const labelCls = "text-sm font-medium text-violet-950";
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="presentation">
       <button
         type="button"
@@ -279,5 +279,6 @@ export function StockPuestoModal({ open, onClose, productoId, productoNombre, st
       onConfirmar={() => { void confirmacion?.onOk(); }}
       onCancelar={() => { setConfirmacion(null); setConfirmError(null); setConfirmCargando(false); }}
     />
+    </>
   );
 }

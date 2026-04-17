@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import path from "path";
 
 const securityHeaders = [
   // Evitar que la app se cargue en un iframe (clickjacking)
@@ -10,13 +9,11 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   // Deshabilitar acceso a cámara, micrófono y geolocalización
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  // Desactivar DNS prefetch para evitar filtración de URLs internas
+  { key: "X-DNS-Prefetch-Control", value: "on" },
 ];
 
 const nextConfig: NextConfig = {
-  // Evita que Turbopack tome como raíz otra carpeta si hay otro package-lock fuera del proyecto.
-  turbopack: {
-    root: path.resolve(process.cwd()),
-  },
   async headers() {
     return [
       {
