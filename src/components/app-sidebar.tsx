@@ -251,44 +251,70 @@ export function AppSidebar({ userEmail }: AppSidebarProps) {
         </button>
       )}
 
-      {/* Backup + Logout */}
+      {/* Backup + Restaurar + Logout */}
       <div className="border-t border-white/15 p-2 flex flex-col gap-1">
         {collapsed && !isMobile ? (
-          <a
-            href="/api/backup"
-            download
-            title="Exportar backup"
-            className="flex w-full items-center justify-center rounded-lg py-2.5 text-violet-200/80 transition hover:bg-white/10 hover:text-white"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
-            </svg>
-          </a>
+          <>
+            <a
+              href="/api/backup"
+              download
+              title="Exportar backup"
+              className="flex w-full items-center justify-center rounded-lg py-2.5 text-violet-200/80 transition hover:bg-white/10 hover:text-white"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
+              </svg>
+            </a>
+            <a
+              href="/restaurar"
+              title="Restaurar backup"
+              className="flex w-full items-center justify-center rounded-lg py-2.5 text-violet-200/80 transition hover:bg-white/10 hover:text-white"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12" />
+              </svg>
+            </a>
+            <button
+              type="button"
+              onClick={handleLogout}
+              title="Cerrar sesión"
+              className="flex w-full items-center justify-center rounded-lg py-2.5 text-violet-200/80 transition hover:bg-white/10 hover:text-white"
+            >
+              <LogoutIcon />
+            </button>
+          </>
         ) : (
-          <a
-            href="/api/backup"
-            download
-            className="flex items-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-xs font-medium text-violet-200/80 transition hover:bg-white/10 hover:text-white"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
-            </svg>
-            <span>Exportar backup</span>
-          </a>
-        )}
-        {collapsed && !isMobile ? (
-          <button
-            type="button"
-            onClick={handleLogout}
-            title="Cerrar sesión"
-            className="flex w-full items-center justify-center rounded-lg py-2.5 text-violet-200/80 transition hover:bg-white/10 hover:text-white"
-          >
-            <LogoutIcon />
-          </button>
-        ) : (
-          <LogoutButton />
+          <>
+            <a
+              href="/api/backup"
+              download
+              className="flex items-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-xs font-medium text-violet-200/80 transition hover:bg-white/10 hover:text-white"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
+              </svg>
+              <span>Exportar backup</span>
+            </a>
+            <a
+              href="/restaurar"
+              className="flex items-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-xs font-medium text-violet-200/80 transition hover:bg-white/10 hover:text-white"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12" />
+              </svg>
+              <span>Restaurar backup</span>
+            </a>
+            <LogoutButton />
+          </>
         )}
       </div>
+
+      {/* Crédito */}
+      {(!collapsed || isMobile) && (
+        <p className="px-3 pb-3 text-center text-[10px] text-violet-300/50">
+          Desarrollado por B&amp;B · 2026
+        </p>
+      )}
     </>
   );
 
