@@ -15,6 +15,7 @@ import {
   listarClientesActivos,
   type CobroConCliente,
 } from "@/app/(app)/saldos/actions";
+import { listarProveedoresActivos } from "@/app/(app)/proveedores/actions";
 import { formatArs } from "@/lib/format";
 import { PagoFormModal } from "./pago-form-modal";
 import { CobroFormModal } from "@/components/saldos/cobro-form-modal";
@@ -95,6 +96,9 @@ export function PagosDiariosClient() {
   const [clientes, setClientes] = useState<{ id: string; nombre: string }[]>([]);
   const [modalCobroAbierto, setModalCobroAbierto] = useState(false);
 
+  // ── Proveedores ──
+  const [proveedores, setProveedores] = useState<{ id: string; nombre: string }[]>([]);
+
   // ── Carga de datos ──
 
   const cargarPagos = useCallback(async () => {
@@ -130,6 +134,13 @@ export function PagosDiariosClient() {
   useEffect(() => {
     listarClientesActivos().then((res) => {
       if (res.ok) setClientes(res.clientes);
+    });
+  }, []);
+
+  // Proveedores activos (para modal de pagos)
+  useEffect(() => {
+    listarProveedoresActivos().then((res) => {
+      if (res.ok) setProveedores(res.proveedores);
     });
   }, []);
 
@@ -379,6 +390,7 @@ export function PagosDiariosClient() {
         pago={pagoEdit}
         fecha={fecha}
         chequesDisponibles={cheques}
+        proveedores={proveedores}
         onGuardado={() => {
           void cargarPagos();
           listarChequesEnCartera().then((res) => {

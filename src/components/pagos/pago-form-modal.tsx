@@ -12,6 +12,8 @@ import { type ChequeFila } from "@/app/(app)/cheques/actions";
 import { ChequeSelect } from "@/components/cheques/cheque-select";
 import { formatArs } from "@/lib/format";
 
+type ProveedorOption = { id: string; nombre: string };
+
 type Modo = "crear" | "editar";
 
 type PagoFormModalProps = {
@@ -21,6 +23,7 @@ type PagoFormModalProps = {
   pago: PagoFila | null;
   fecha: string;
   chequesDisponibles: ChequeFila[];
+  proveedores?: ProveedorOption[];
   onGuardado: () => void;
 };
 
@@ -46,6 +49,7 @@ export function PagoFormModal({
   pago,
   fecha,
   chequesDisponibles,
+  proveedores = [],
   onGuardado,
 }: PagoFormModalProps) {
   const titleId = useId();
@@ -55,6 +59,7 @@ export function PagoFormModal({
   const [total, setTotal] = useState("");
   const [chequeId, setChequeId] = useState("");
   const [notas, setNotas] = useState("");
+  const [proveedorId, setProveedorId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,12 +72,14 @@ export function PagoFormModal({
       setTotal(String(pago.total));
       setChequeId(pago.cheque_id ?? "");
       setNotas(pago.notas ?? "");
+      setProveedorId(pago.proveedor_id ?? "");
     } else {
       setDescripcion("");
       setMovimiento("efectivo");
       setTotal("");
       setChequeId("");
       setNotas("");
+      setProveedorId("");
     }
   }, [open, modo, pago]);
 
@@ -104,7 +111,7 @@ export function PagoFormModal({
       total: parseFloat(total.replace(",", ".")) || 0,
       cheque_id: movimiento === "cheque" ? chequeId || null : null,
       notas: notas.trim() || null,
-      proveedor_id: null,
+      proveedor_id: proveedorId || null,
     };
 
     const res =
@@ -153,6 +160,36 @@ export function PagoFormModal({
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+          {/* Proveedor (opcional) */}
+          {proveedores.length > 0 && (
+            <div>
+              <label className={labelCls} htmlFor="pg-proveedor">
+                Proveedor{" "}
+                <span className="font-normal text-violet-500">(opcional)</span>
+              </label>
+              <select
+                id="pg-proveedor"
+                value={proveedorId}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setProveedorId(id);
+                  if (id) {
+                    const prov = proveedores.find((p) => p.id === id);
+                    if (prov) setDescripcion(prov.nombre);
+                  }
+                }}
+                className={inputCls}
+              >
+                <option value="">— Sin proveedor asociado —</option>
+                {proveedores.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Descripción */}
           <div>
             <label className={labelCls} htmlFor="pg-desc">
