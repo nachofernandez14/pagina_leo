@@ -182,8 +182,8 @@ export function AppSidebar({ userEmail }: AppSidebarProps) {
     <>
       {/* Área del logo */}
       <div
-        className={`flex flex-col items-center gap-2 border-b border-white/15 transition-all duration-300 ${
-          collapsed && !isMobile ? "px-2 py-4" : "px-4 py-5"
+        className={`flex flex-col items-center gap-1.5 border-b border-white/15 transition-all duration-300 ${
+          collapsed && !isMobile ? "px-2 py-4" : "px-3 py-3 xl:px-4 xl:py-5"
         }`}
       >
         {collapsed && !isMobile ? (
@@ -197,11 +197,11 @@ export function AppSidebar({ userEmail }: AppSidebarProps) {
               alt="Logo"
               width={200}
               height={100}
-              className="h-auto w-44 object-contain"
+              className="h-auto w-28 xl:w-40 object-contain"
               priority
             />
             <p
-              className="max-w-full truncate text-center text-[11px] text-violet-100/80"
+              className="max-w-full truncate text-center text-[10px] text-violet-100/80"
               title={userEmail}
             >
               {userEmail}
@@ -211,7 +211,7 @@ export function AppSidebar({ userEmail }: AppSidebarProps) {
       </div>
 
       {/* Nav */}
-      <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2" aria-label="Secciones">
+      <nav className="flex flex-1 flex-col gap-0 overflow-y-auto p-1.5 xl:p-2" aria-label="Secciones">
         {NAV_ITEMS.map((item) => {
           const active =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -220,7 +220,7 @@ export function AppSidebar({ userEmail }: AppSidebarProps) {
               key={item.href}
               href={item.href}
               title={collapsed && !isMobile ? item.label : undefined}
-              className={`flex items-center gap-3 rounded-lg py-2.5 text-sm font-medium transition-colors ${
+              className={`flex items-center gap-3 rounded-lg py-2 xl:py-2.5 text-sm font-medium transition-colors ${
                 collapsed && !isMobile
                   ? "justify-center px-2"
                   : "px-3"
@@ -245,7 +245,7 @@ export function AppSidebar({ userEmail }: AppSidebarProps) {
           type="button"
           onClick={() => setCollapsed((c) => !c)}
           title={collapsed ? "Expandir" : "Contraer"}
-          className="mx-2 mb-2 flex items-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-xs font-medium text-violet-200/80 transition hover:bg-white/10 hover:text-white"
+          className="mx-2 mb-1 flex items-center gap-2 rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-violet-200/80 transition hover:bg-white/10 hover:text-white"
         >
           {collapsed ? <ChevronRight /> : <><ChevronLeft /><span>Contraer</span></>}
         </button>
@@ -311,7 +311,7 @@ export function AppSidebar({ userEmail }: AppSidebarProps) {
 
       {/* Crédito */}
       {(!collapsed || isMobile) && (
-        <p className="px-3 pb-3 text-center text-[10px] text-violet-300/50">
+        <p className="px-3 pb-2 text-center text-[9px] text-violet-300/50">
           Desarrollado por B&amp;B · 2026
         </p>
       )}

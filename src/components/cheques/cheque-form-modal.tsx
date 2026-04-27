@@ -8,6 +8,8 @@ import {
   type ChequeInput,
 } from "@/app/(app)/cheques/actions";
 import { listarClientesActivos } from "@/app/(app)/saldos/actions";
+import { listarProveedoresActivos } from "@/app/(app)/proveedores/actions";
+import { listarPersonasCampoActivas } from "@/app/(app)/campo/actions";
 
 type Modo = "crear" | "editar";
 
@@ -19,12 +21,17 @@ type ChequeFormModalProps = {
   onGuardado: () => void;
 };
 
-const CAMPO_VACIO: Omit<ChequeInput, "monto"> & { monto: string } = {
+type EntregadoTipo = "libre" | "proveedor" | "campo";
+
+const CAMPO_VACIO = {
   banco: "",
   cuit: "",
   numero_cheque: "",
   recibido_de: "",
+  recibido_de_cliente_id: "",
   entregado_a: "",
+  entregado_a_tipo: "libre" as EntregadoTipo,
+  entregado_a_id: "",
   monto: "",
   fecha_cobro: "",
   notas: "",
@@ -65,15 +72,23 @@ export function ChequeFormModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [clientes, setClientes] = useState<{ id: string; nombre: string }[]>([]);
+  const [proveedores, setProveedores] = useState<{ id: string; nombre: string }[]>([]);
+  const [personasCampo, setPersonasCampo] = useState<{ id: string; nombre: string }[]>([]);
 
-  // Cargar clientes activos para el datalist de "Recibido de"
+  // Cargar listas para autocomplete
   useEffect(() => {
-    listarClientesActivos().then((res) => {
-      if (res.ok) setClientes(res.clientes);
+    Promise.all([
+      listarClientesActivos(),
+      listarProveedoresActivos(),
+      listarPersonasCampoActivas(),
+    ]).then(([resC, resProv, resCampo]) => {
+      if (resC.ok) setClientes(resC.clientes);
+      if (resProv.ok) setProveedores(resProv.proveedores);
+      if (resCampo.ok) setPersonasCampo(resCampo.personas);
     });
   }, []);
 
-  function set(field: keyof typeof CAMPO_VACIO, value: string) {
+  function set<K extends keyof typeof CAMPO_VACIO>(field: K, value: (typeof CAMPO_VACIO)[K]) {
     setCampos((prev) => ({ ...prev, [field]: value }));
   }
 
@@ -85,16 +100,51 @@ export function ChequeFormModal({
     set("numero_cheque", formatearNroCheque(e.target.value));
   }
 
+  function handleRecibidoDe(val: string) {
+    const match = clientes.find(
+      (c) => c.nombre.toLowerCase() === val.toLowerCase().trim(),
+    );
+    setCampos((prev) => ({
+      ...prev,
+      recibido_de: val,
+      recibido_de_cliente_id: match?.id ?? "",
+    }));
+  }
+
+  function handleEntregadoTipo(tipo: EntregadoTipo) {
+    setCampos((prev) => ({
+      ...prev,
+      entregado_a_tipo: tipo,
+      entregado_a_id: "",
+      entregado_a: "",
+    }));
+  }
+
+  function handleEntregadoEntity(id: string, nombre: string) {
+    setCampos((prev) => ({ ...prev, entregado_a_id: id, entregado_a: nombre }));
+  }
+
   useEffect(() => {
     if (!open) return;
     setError(null);
     if (modo === "editar" && cheque) {
+      const tipo: EntregadoTipo = cheque.entregado_a_proveedor_id
+        ? "proveedor"
+        : cheque.entregado_a_persona_campo_id
+          ? "campo"
+          : "libre";
       setCampos({
         banco: cheque.banco,
         cuit: cheque.cuit,
         numero_cheque: cheque.numero_cheque,
         recibido_de: cheque.recibido_de,
+        recibido_de_cliente_id: cheque.recibido_de_cliente_id ?? "",
         entregado_a: cheque.entregado_a ?? "",
+        entregado_a_tipo: tipo,
+        entregado_a_id:
+          cheque.entregado_a_proveedor_id ??
+          cheque.entregado_a_persona_campo_id ??
+          "",
         monto: String(cheque.monto),
         fecha_cobro: cheque.fecha_cobro,
         notas: cheque.notas ?? "",
@@ -136,7 +186,16 @@ export function ChequeFormModal({
       cuit: campos.cuit,
       numero_cheque: campos.numero_cheque,
       recibido_de: campos.recibido_de,
+      recibido_de_cliente_id: campos.recibido_de_cliente_id || null,
       entregado_a: campos.entregado_a || null,
+      entregado_a_proveedor_id:
+        campos.entregado_a_tipo === "proveedor" && campos.entregado_a_id
+          ? campos.entregado_a_id
+          : null,
+      entregado_a_persona_campo_id:
+        campos.entregado_a_tipo === "campo" && campos.entregado_a_id
+          ? campos.entregado_a_id
+          : null,
       monto: parseFloat(campos.monto.replace(",", ".")) || 0,
       fecha_cobro: campos.fecha_cobro,
       notas: campos.notas || null,
@@ -265,7 +324,7 @@ export function ChequeFormModal({
               required
               list="ch-clientes-list"
               value={campos.recibido_de}
-              onChange={(e) => set("recibido_de", e.target.value)}
+              onChange={(e) => handleRecibidoDe(e.target.value)}
               placeholder="Nombre o seleccioná un cliente"
               className={inputCls}
             />
@@ -276,22 +335,88 @@ export function ChequeFormModal({
                 ))}
               </datalist>
             ) : null}
+            {campos.recibido_de_cliente_id ? (
+              <p className="mt-1 text-xs text-emerald-700">
+                ✓ Se registrará como cobro en el saldo del cliente
+              </p>
+            ) : null}
           </div>
 
           {/* Entregado a */}
           <div>
-            <label className={labelCls} htmlFor="ch-entregado">
+            <label className={labelCls}>
               Entregado a{" "}
               <span className="font-normal text-violet-500">(opcional)</span>
             </label>
-            <input
-              id="ch-entregado"
-              type="text"
-              value={campos.entregado_a ?? ""}
-              onChange={(e) => set("entregado_a", e.target.value)}
-              placeholder="Dejar vacío si sigue en cartera"
-              className={inputCls}
-            />
+            {/* Selector de tipo */}
+            <div className="mt-1 flex gap-2">
+              {(["libre", "proveedor", "campo"] as EntregadoTipo[]).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => handleEntregadoTipo(t)}
+                  className={`rounded-lg border px-3 py-1 text-xs font-medium transition ${
+                    campos.entregado_a_tipo === t
+                      ? "border-violet-600 bg-violet-600 text-white"
+                      : "border-violet-200 bg-white text-violet-700 hover:bg-violet-50"
+                  }`}
+                >
+                  {t === "libre" ? "Texto libre" : t === "proveedor" ? "Proveedor" : "Campo"}
+                </button>
+              ))}
+            </div>
+
+            {campos.entregado_a_tipo === "libre" ? (
+              <input
+                id="ch-entregado"
+                type="text"
+                value={campos.entregado_a}
+                onChange={(e) => set("entregado_a", e.target.value)}
+                placeholder="Dejar vacío si sigue en cartera"
+                className={`${inputCls} mt-2`}
+              />
+            ) : campos.entregado_a_tipo === "proveedor" ? (
+              <select
+                value={campos.entregado_a_id}
+                onChange={(e) => {
+                  const prov = proveedores.find((p) => p.id === e.target.value);
+                  if (prov) handleEntregadoEntity(prov.id, prov.nombre);
+                  else setCampos((prev) => ({ ...prev, entregado_a_id: "", entregado_a: "" }));
+                }}
+                className={`${inputCls} mt-2`}
+              >
+                <option value="">— Seleccioná un proveedor —</option>
+                {proveedores.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <select
+                value={campos.entregado_a_id}
+                onChange={(e) => {
+                  const persona = personasCampo.find((p) => p.id === e.target.value);
+                  if (persona) handleEntregadoEntity(persona.id, persona.nombre);
+                  else setCampos((prev) => ({ ...prev, entregado_a_id: "", entregado_a: "" }));
+                }}
+                className={`${inputCls} mt-2`}
+              >
+                <option value="">— Seleccioná una persona de campo —</option>
+                {personasCampo.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {campos.entregado_a_id && campos.entregado_a_tipo !== "libre" ? (
+              <p className="mt-1 text-xs text-emerald-700">
+                ✓ Se registrará como pago en{" "}
+                {campos.entregado_a_tipo === "proveedor" ? "Proveedores" : "Campo"}
+              </p>
+            ) : null}
           </div>
 
           {/* Monto + Fecha */}

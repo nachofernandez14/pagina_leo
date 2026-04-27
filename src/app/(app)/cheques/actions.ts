@@ -11,7 +11,10 @@ export type ChequeFila = {
   cuit: string;
   numero_cheque: string;
   recibido_de: string;
+  recibido_de_cliente_id: string | null;
   entregado_a: string | null;
+  entregado_a_proveedor_id: string | null;
+  entregado_a_persona_campo_id: string | null;
   monto: number;
   fecha_cobro: string; // YYYY-MM-DD
   estado: EstadoCheque;
@@ -24,7 +27,10 @@ export type ChequeInput = {
   cuit: string;
   numero_cheque: string;
   recibido_de: string;
+  recibido_de_cliente_id: string | null;
   entregado_a: string | null;
+  entregado_a_proveedor_id: string | null;
+  entregado_a_persona_campo_id: string | null;
   monto: number;
   fecha_cobro: string;
   notas: string | null;
@@ -183,18 +189,31 @@ export async function crearCheque(
     return { ok: false, error: "La fecha de cobro no es válida." };
   }
 
+  const entregadoA = input.entregado_a?.trim() || null;
+  const estadoInicial: EstadoCheque =
+    input.entregado_a_proveedor_id || input.entregado_a_persona_campo_id
+      ? "entregado"
+      : "en_cartera";
+
   const supabase = await createClient();
-  const { error } = await supabase.from("cheques").insert({
-    banco,
-    cuit,
-    numero_cheque: numero,
-    recibido_de: recibido,
-    entregado_a: input.entregado_a?.trim() || null,
-    monto,
-    fecha_cobro: input.fecha_cobro,
-    estado: "en_cartera" as EstadoCheque,
-    notas: input.notas?.trim() || null,
-  });
+  const { data: inserted, error } = await supabase
+    .from("cheques")
+    .insert({
+      banco,
+      cuit,
+      numero_cheque: numero,
+      recibido_de: recibido,
+      recibido_de_cliente_id: input.recibido_de_cliente_id || null,
+      entregado_a: entregadoA,
+      entregado_a_proveedor_id: input.entregado_a_proveedor_id || null,
+      entregado_a_persona_campo_id: input.entregado_a_persona_campo_id || null,
+      monto,
+      fecha_cobro: input.fecha_cobro,
+      estado: estadoInicial,
+      notas: input.notas?.trim() || null,
+    })
+    .select("id")
+    .single();
 
   if (error) {
     return {
@@ -204,6 +223,61 @@ export async function crearCheque(
           ? "Falta crear la tabla cheques en Supabase."
           : error.message,
     };
+  }
+
+  const chequeId = inserted.id as string;
+  const today = new Date().toISOString().split("T")[0];
+
+  // Auto-crear cobro en saldo del cliente si está vinculado
+  if (input.recibido_de_cliente_id) {
+    await supabase.from("cobros").insert({
+      fecha: today,
+      cliente_id: input.recibido_de_cliente_id,
+      movimiento: "cheque",
+      monto,
+      cheque_id: chequeId,
+      notas: `Cheque N° ${numero} – ${banco}`,
+    });
+    revalidatePath("/saldos");
+  }
+
+  // Auto-crear pago a proveedor si está vinculado
+  if (input.entregado_a_proveedor_id) {
+    const { count } = await supabase
+      .from("pagos")
+      .select("id", { count: "exact", head: true })
+      .eq("cheque_id", chequeId);
+    if (!count || count === 0) {
+      await supabase.from("pagos").insert({
+        fecha: today,
+        proveedor_id: input.entregado_a_proveedor_id,
+        descripcion: entregadoA ?? "Pago con cheque",
+        movimiento: "cheque",
+        total: monto,
+        cheque_id: chequeId,
+        notas: input.notas?.trim() || null,
+      });
+      revalidatePath("/proveedores");
+    }
+  }
+
+  // Auto-crear pago a persona de campo si está vinculado
+  if (input.entregado_a_persona_campo_id) {
+    const { count } = await supabase
+      .from("pagos_campo")
+      .select("id", { count: "exact", head: true })
+      .eq("cheque_id", chequeId);
+    if (!count || count === 0) {
+      await supabase.from("pagos_campo").insert({
+        fecha: today,
+        persona_campo_id: input.entregado_a_persona_campo_id,
+        movimiento: "cheque",
+        monto,
+        cheque_id: chequeId,
+        notas: input.notas?.trim() || null,
+      });
+      revalidatePath("/campo");
+    }
   }
 
   revalidateCheques();
@@ -239,6 +313,22 @@ export async function actualizarCheque(
   }
 
   const supabase = await createClient();
+
+  // Obtener estado actual para saber qué cambió
+  const { data: actual } = await supabase
+    .from("cheques")
+    .select("recibido_de_cliente_id, entregado_a_proveedor_id, entregado_a_persona_campo_id, monto, estado")
+    .eq("id", input.id)
+    .single();
+
+  const entregadoA = input.entregado_a?.trim() || null;
+  const nuevoEstado: EstadoCheque = (() => {
+    const tieneEntrega = input.entregado_a_proveedor_id || input.entregado_a_persona_campo_id;
+    if (tieneEntrega) return "entregado";
+    if (actual?.estado === "cobrado" || actual?.estado === "rechazado") return actual.estado;
+    return "en_cartera";
+  })();
+
   const { error } = await supabase
     .from("cheques")
     .update({
@@ -246,14 +336,96 @@ export async function actualizarCheque(
       cuit,
       numero_cheque: numero,
       recibido_de: recibido,
-      entregado_a: input.entregado_a?.trim() || null,
+      recibido_de_cliente_id: input.recibido_de_cliente_id || null,
+      entregado_a: entregadoA,
+      entregado_a_proveedor_id: input.entregado_a_proveedor_id || null,
+      entregado_a_persona_campo_id: input.entregado_a_persona_campo_id || null,
       monto,
       fecha_cobro: input.fecha_cobro,
+      estado: nuevoEstado,
       notas: input.notas?.trim() || null,
     })
     .eq("id", input.id);
 
   if (error) return { ok: false, error: error.message };
+
+  const today = new Date().toISOString().split("T")[0];
+
+  // ── Gestión de cobro en saldo del cliente ──────────────────────────────
+  // Si había o hay un cliente vinculado, re-sincronizar el cobro
+  if (actual?.recibido_de_cliente_id !== null || input.recibido_de_cliente_id) {
+    await supabase.from("cobros").delete().eq("cheque_id", input.id);
+    if (input.recibido_de_cliente_id) {
+      await supabase.from("cobros").insert({
+        fecha: today,
+        cliente_id: input.recibido_de_cliente_id,
+        movimiento: "cheque",
+        monto,
+        cheque_id: input.id,
+        notas: `Cheque N° ${numero} – ${banco}`,
+      });
+    }
+    revalidatePath("/saldos");
+  }
+
+  // ── Gestión de pago a proveedor ────────────────────────────────────────
+  // Solo administramos el pago si fue creado por el formulario de cheque
+  // (detectado porque entregado_a_proveedor_id estaba guardado en el cheque)
+  if (actual?.entregado_a_proveedor_id) {
+    await supabase
+      .from("pagos")
+      .delete()
+      .eq("cheque_id", input.id)
+      .eq("proveedor_id", actual.entregado_a_proveedor_id);
+  }
+  if (input.entregado_a_proveedor_id) {
+    const { count } = await supabase
+      .from("pagos")
+      .select("id", { count: "exact", head: true })
+      .eq("cheque_id", input.id);
+    if (!count || count === 0) {
+      await supabase.from("pagos").insert({
+        fecha: today,
+        proveedor_id: input.entregado_a_proveedor_id,
+        descripcion: entregadoA ?? "Pago con cheque",
+        movimiento: "cheque",
+        total: monto,
+        cheque_id: input.id,
+        notas: input.notas?.trim() || null,
+      });
+    }
+    revalidatePath("/proveedores");
+  } else if (actual?.entregado_a_proveedor_id) {
+    revalidatePath("/proveedores");
+  }
+
+  // ── Gestión de pago a persona de campo ────────────────────────────────
+  if (actual?.entregado_a_persona_campo_id) {
+    await supabase
+      .from("pagos_campo")
+      .delete()
+      .eq("cheque_id", input.id)
+      .eq("persona_campo_id", actual.entregado_a_persona_campo_id);
+  }
+  if (input.entregado_a_persona_campo_id) {
+    const { count } = await supabase
+      .from("pagos_campo")
+      .select("id", { count: "exact", head: true })
+      .eq("cheque_id", input.id);
+    if (!count || count === 0) {
+      await supabase.from("pagos_campo").insert({
+        fecha: today,
+        persona_campo_id: input.entregado_a_persona_campo_id,
+        movimiento: "cheque",
+        monto,
+        cheque_id: input.id,
+        notas: input.notas?.trim() || null,
+      });
+    }
+    revalidatePath("/campo");
+  } else if (actual?.entregado_a_persona_campo_id) {
+    revalidatePath("/campo");
+  }
 
   revalidateCheques();
   return { ok: true };

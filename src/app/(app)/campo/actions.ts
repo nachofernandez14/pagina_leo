@@ -409,4 +409,19 @@ export async function eliminarPagoCampo(
   return { ok: true };
 }
 
+// ─── Listar personas de campo activas (para selectores) ──────────────────────
+
+export async function listarPersonasCampoActivas(): Promise<
+  { ok: true; personas: { id: string; nombre: string }[] } | { ok: false; error: string }
+> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("personas_campo")
+    .select("id, nombre")
+    .eq("activo", true)
+    .order("nombre");
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, personas: (data ?? []).map((p) => ({ id: p.id, nombre: p.nombre })) };
+}
+
 
