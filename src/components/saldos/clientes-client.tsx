@@ -187,32 +187,32 @@ export function ClientesClient() {
       // continuar sin logo
     }
 
-    let y = 15;
+    let y = 12;
 
     if (logoDataUrl) {
-      doc.addImage(logoDataUrl, "PNG", 14, y, 28, 28);
+      doc.addImage(logoDataUrl, "PNG", 14, y, 20, 20);
     }
 
     // Título
-    doc.setFontSize(20);
+    doc.setFontSize(16);
     doc.setTextColor(91, 33, 182);
-    doc.text("Estado de cuenta", pageW - 14, y + 10, { align: "right" });
-    doc.setFontSize(9);
+    doc.text("Estado de cuenta", pageW - 14, y + 7, { align: "right" });
+    doc.setFontSize(8);
     doc.setTextColor(120, 90, 170);
-    doc.text(`Generado: ${fechaHora}`, pageW - 14, y + 17, { align: "right" });
-    y += 36;
+    doc.text(`Generado: ${fechaHora}`, pageW - 14, y + 13, { align: "right" });
+    y += 26;
 
     // Datos del cliente
-    doc.setFontSize(13);
+    doc.setFontSize(11);
     doc.setTextColor(30, 10, 60);
     doc.text(cliente.nombre, 14, y);
     if (cliente.telefono) {
-      doc.setFontSize(10);
+      doc.setFontSize(8);
       doc.setTextColor(90, 70, 130);
-      doc.text(cliente.telefono, 14, y + 6);
-      y += 6;
+      doc.text(cliente.telefono, 14, y + 5);
+      y += 5;
     }
-    y += 10;
+    y += 7;
 
     // Resumen en 3 cajas
     const boxW = (pageW - 28 - 4) / 3;
@@ -230,15 +230,15 @@ export function ClientesClient() {
     resumeItems.forEach(({ label, value, r, g, b }, i) => {
       const x = 14 + i * (boxW + 2);
       doc.setFillColor(245, 243, 255);
-      doc.roundedRect(x, y, boxW, 18, 2, 2, "F");
-      doc.setFontSize(7);
+      doc.roundedRect(x, y, boxW, 14, 2, 2, "F");
+      doc.setFontSize(6);
       doc.setTextColor(109, 40, 217);
-      doc.text(label, x + 3, y + 6);
-      doc.setFontSize(11);
+      doc.text(label, x + 2.5, y + 5);
+      doc.setFontSize(9);
       doc.setTextColor(r, g, b);
-      doc.text(value, x + 3, y + 14);
+      doc.text(value, x + 2.5, y + 11);
     });
-    y += 26;
+    y += 20;
 
     // Unificar ventas y cobros en una sola lista ordenada por fecha
     type FilaMovimiento = {
@@ -282,20 +282,20 @@ export function ClientesClient() {
     });
 
     // Tabla unificada
-    doc.setFontSize(11);
+    doc.setFontSize(9);
     doc.setTextColor(30, 10, 60);
     doc.text("Movimientos", 14, y);
-    y += 5;
+    y += 4;
 
     autoTable(doc, {
       startY: y,
       head: [["Fecha", "Descripción", "Tipo", "Compra", "Pago", "Saldo"]],
       body: bodyRows.map((r) => [r.fecha, r.descripcion, r.tipo === "venta" ? "Compra" : "Pago", r.debe, r.haber, r.saldo]),
-      styles: { fontSize: 9, cellPadding: 3 },
-      headStyles: { fillColor: [91, 33, 182], textColor: 255, fontStyle: "bold" },
+      styles: { fontSize: 7, cellPadding: 1.5 },
+      headStyles: { fillColor: [91, 33, 182], textColor: 255, fontStyle: "bold", fontSize: 7 },
       columnStyles: {
-        0: { cellWidth: 22 },
-        2: { cellWidth: 18, halign: "center" },
+        0: { cellWidth: 20 },
+        2: { cellWidth: 15, halign: "center" },
         3: { halign: "right" },
         4: { halign: "right" },
         5: { halign: "right", fontStyle: "bold" },
@@ -320,7 +320,21 @@ export function ClientesClient() {
         }
       },
       alternateRowStyles: { fillColor: [249, 247, 255] },
+      showHead: "everyPage",
       margin: { left: 14, right: 14 },
+      didDrawPage(data) {
+        // Número de página al pie
+        const pageCount = (doc.internal as unknown as { getNumberOfPages: () => number }).getNumberOfPages();
+        const pageNumber = data.pageNumber;
+        doc.setFontSize(7);
+        doc.setTextColor(150, 130, 180);
+        doc.text(
+          `Página ${pageNumber} de ${pageCount}`,
+          pageW / 2,
+          doc.internal.pageSize.getHeight() - 6,
+          { align: "center" },
+        );
+      },
     });
 
     const safeName = cliente.nombre.toLowerCase().replace(/[^a-z0-9]+/g, "-");
