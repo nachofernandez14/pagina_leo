@@ -267,7 +267,7 @@ export default async function DashboardPage() {
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 border-violet-200 bg-gradient-to-r from-violet-50 to-purple-50/40">
-                    <td colSpan={2} className="px-4 py-3 text-sm font-bold text-violet-900">
+                    <td colSpan={3} className="px-4 py-3 text-sm font-bold text-violet-900">
                       Total en cartera
                     </td>
                     <td className="px-4 py-3 text-right font-mono text-sm font-bold tabular-nums text-violet-950">

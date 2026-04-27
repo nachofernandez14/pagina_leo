@@ -137,7 +137,7 @@ export function VentasDiariasClient() {
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-violet-500">Operaciones</p>
                 <h1 className="text-2xl font-bold tracking-tight text-violet-950">Ventas diarias</h1>
-                <p className="mt-0.5 max-w-xl text-sm text-violet-700/70">Registro de ventas por cajas de ciruela. Elegí el día para ver o cargar ventas.</p>
+                <p className="mt-0.5 max-w-xl text-sm text-violet-700/70">Registro de ventas diarias. Elegí el día para ver o cargar ventas.</p>
               </div>
             </div>
             <button
@@ -179,6 +179,13 @@ export function VentasDiariasClient() {
                 className="rounded-lg border border-violet-200 bg-white px-3 py-2 text-xs font-medium text-violet-800 transition hover:bg-violet-50"
               >
                 Hoy
+              </button>
+              <button
+                type="button"
+                onClick={() => setFecha(sumarDias(fecha, 1))}
+                className="rounded-lg border border-violet-200 bg-white px-3 py-2 text-xs font-medium text-violet-800 transition hover:bg-violet-50"
+              >
+                Mañana →
               </button>
             </div>
           </div>

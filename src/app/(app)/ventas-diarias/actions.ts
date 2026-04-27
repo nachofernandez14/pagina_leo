@@ -88,6 +88,9 @@ function mapVentaRow(row: VentaRowRaw): VentaFila {
 export async function listarVentasPorFecha(
   fecha: string,
 ): Promise<{ ok: true; ventas: VentaFila[] } | { ok: false; error: string }> {
+  if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+    return { ok: false, error: "Fecha inválida." };
+  }
   const supabase = await createClient();
 
   const { data, error } = await supabase

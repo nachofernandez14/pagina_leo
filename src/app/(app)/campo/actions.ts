@@ -222,12 +222,17 @@ export async function crearPersonaCampo(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const nombre = input.nombre.trim();
   if (!nombre) return { ok: false, error: "El nombre es obligatorio." };
+  if (nombre.length > 200) return { ok: false, error: "El nombre no puede superar 200 caracteres." };
+  const telefono = input.telefono?.trim() || null;
+  if (telefono && telefono.length > 50) return { ok: false, error: "El teléfono no puede superar 50 caracteres." };
+  const notas = input.notas?.trim() || null;
+  if (notas && notas.length > 1000) return { ok: false, error: "Las notas no pueden superar 1000 caracteres." };
 
   const supabase = await createClient();
   const { error } = await supabase.from("personas_campo").insert({
     nombre,
-    telefono: input.telefono?.trim() || null,
-    notas: input.notas?.trim() || null,
+    telefono,
+    notas,
   });
 
   if (error) return { ok: false, error: error.message };
@@ -240,14 +245,19 @@ export async function actualizarPersonaCampo(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const nombre = input.nombre.trim();
   if (!nombre) return { ok: false, error: "El nombre es obligatorio." };
+  if (nombre.length > 200) return { ok: false, error: "El nombre no puede superar 200 caracteres." };
+  const telefono = input.telefono?.trim() || null;
+  if (telefono && telefono.length > 50) return { ok: false, error: "El teléfono no puede superar 50 caracteres." };
+  const notas = input.notas?.trim() || null;
+  if (notas && notas.length > 1000) return { ok: false, error: "Las notas no pueden superar 1000 caracteres." };
 
   const supabase = await createClient();
   const { error } = await supabase
     .from("personas_campo")
     .update({
       nombre,
-      telefono: input.telefono?.trim() || null,
-      notas: input.notas?.trim() || null,
+      telefono,
+      notas,
     })
     .eq("id", input.id);
 

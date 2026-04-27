@@ -175,6 +175,7 @@ export async function crearCheque(
   const monto = Number(input.monto);
 
   if (!banco) return { ok: false, error: "El banco es obligatorio." };
+  if (banco.length > 100) return { ok: false, error: "El banco no puede superar 100 caracteres." };
   if (!cuit) return { ok: false, error: "El CUIT es obligatorio." };
   if (cuit.replace(/\D/g, "").length !== 11)
     return { ok: false, error: "El CUIT debe tener exactamente 11 dígitos." };
@@ -182,6 +183,7 @@ export async function crearCheque(
   if (!/^\d{8}$/.test(numero))
     return { ok: false, error: "El número de cheque debe tener exactamente 8 dígitos." };
   if (!recibido) return { ok: false, error: "El campo 'Recibido de' es obligatorio." };
+  if (recibido.length > 200) return { ok: false, error: "El campo 'Recibido de' no puede superar 200 caracteres." };
   if (!Number.isFinite(monto) || monto <= 0) {
     return { ok: false, error: "El monto debe ser mayor a 0." };
   }

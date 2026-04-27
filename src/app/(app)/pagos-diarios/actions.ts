@@ -40,6 +40,9 @@ function revalidatePagos() {
 export async function listarPagosPorFecha(
   fecha: string,
 ): Promise<{ ok: true; pagos: PagoFila[] } | { ok: false; error: string }> {
+  if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+    return { ok: false, error: "Fecha inválida." };
+  }
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -138,6 +141,9 @@ export async function crearPago(
   }
   if (!descripcion) {
     return { ok: false, error: "La descripción es obligatoria." };
+  }
+  if (descripcion.length > 500) {
+    return { ok: false, error: "La descripción no puede superar 500 caracteres." };
   }
   if (!["efectivo", "transferencia", "cheque"].includes(input.movimiento)) {
     return { ok: false, error: "Tipo de movimiento inválido." };
