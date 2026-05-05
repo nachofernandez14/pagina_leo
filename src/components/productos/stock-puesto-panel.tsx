@@ -27,12 +27,15 @@ function sumarDias(fechaIso: string, dias: number): string {
 }
 
 function formatearFechaEtiqueta(fechaIso: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaIso)) return "";
   const [y, m, d] = fechaIso.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  if (isNaN(dt.getTime())) return "";
   return new Intl.DateTimeFormat("es-AR", {
     weekday: "long",
     day: "numeric",
     month: "long",
-  }).format(new Date(y, m - 1, d));
+  }).format(dt);
 }
 
 function formatFecha(iso: string): string {

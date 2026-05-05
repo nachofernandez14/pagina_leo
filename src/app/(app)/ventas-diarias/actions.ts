@@ -23,7 +23,9 @@ export type VentaFila = {
   precio_unitario: number;
   total: number;
   created_at: string;
+  cliente_id: string | null;
   cliente_nombre: string | null;
+  producto_id: string;
   producto_nombre: string;
   embalaje_nombre: string | null;
   origen: "puesto" | "galpon";
@@ -48,6 +50,8 @@ type VentaRowRaw = {
   precio_unitario: number;
   total: number;
   created_at: string;
+  cliente_id: string | null;
+  producto_id: string;
   clientes: unknown;
   productos: unknown;
   origen: string;
@@ -78,7 +82,9 @@ function mapVentaRow(row: VentaRowRaw): VentaFila {
     precio_unitario: Number(row.precio_unitario),
     total: Number(row.total),
     created_at: row.created_at,
+    cliente_id: row.cliente_id,
     cliente_nombre: c?.nombre ?? null,
+    producto_id: row.producto_id,
     producto_nombre: p?.nombre ?? "—",
     embalaje_nombre,
     origen: (row.origen === "puesto" ? "puesto" : "galpon") as "puesto" | "galpon",
@@ -104,6 +110,8 @@ export async function listarVentasPorFecha(
       total,
       created_at,
       origen,
+      cliente_id,
+      producto_id,
       clientes ( nombre ),
       productos ( nombre, embalajes ( nombre ) )
     `,
@@ -132,6 +140,7 @@ export async function listarClientes(): Promise<
   const { data, error } = await supabase
     .from("clientes")
     .select("id, nombre")
+    .eq("activo", true)
     .order("nombre", { ascending: true });
 
   if (error) {
@@ -231,6 +240,70 @@ export async function crearVenta(
           : error.message,
     };
   }
+
+  revalidatePath("/ventas-diarias");
+  return { ok: true };
+}
+
+export type EditarVentaInput = {
+  id: string;
+  fecha: string;
+  clienteId: string | null;
+  productoId: string;
+  cantidadCajas: number;
+  precioUnitario: number;
+  origen: "galpon" | "puesto";
+};
+
+export async function editarVenta(
+  input: EditarVentaInput,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const cantidad = Math.floor(Number(input.cantidadCajas));
+  const precio = Number(input.precioUnitario);
+
+  if (!input.id) return { ok: false, error: "ID de venta inválido." };
+  if (!input.fecha || !/^\d{4}-\d{2}-\d{2}$/.test(input.fecha)) {
+    return { ok: false, error: "Fecha inválida." };
+  }
+  if (!input.productoId) return { ok: false, error: "Elegí un producto." };
+  if (!Number.isFinite(cantidad) || cantidad < 1) {
+    return { ok: false, error: "La cantidad de cajas debe ser al menos 1." };
+  }
+  if (!Number.isFinite(precio) || precio < 0) {
+    return { ok: false, error: "El precio unitario no es válido." };
+  }
+
+  const total = calcularTotalVenta(cantidad, precio);
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("ventas")
+    .update({
+      fecha: input.fecha,
+      cliente_id: input.clienteId,
+      producto_id: input.productoId,
+      cantidad_cajas: cantidad,
+      precio_unitario: precio,
+      total,
+      origen: input.origen,
+    })
+    .eq("id", input.id);
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/ventas-diarias");
+  return { ok: true };
+}
+
+export async function eliminarVenta(
+  id: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!id) return { ok: false, error: "ID de venta inválido." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("ventas").delete().eq("id", id);
+
+  if (error) return { ok: false, error: error.message };
 
   revalidatePath("/ventas-diarias");
   return { ok: true };

@@ -360,13 +360,15 @@ export function ClientesClient() {
                   <p className="mt-0.5 max-w-lg text-sm text-violet-700/70">Saldo de cada cliente: lo que nos compró menos lo que nos pagó.</p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setModalCliente({ open: true, modo: "crear", cliente: null })}
-                className="shrink-0 rounded-xl bg-gradient-to-r from-violet-700 to-purple-700 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-violet-900/25 transition hover:from-violet-600 hover:to-purple-600"
-              >
-                + Nuevo cliente
-              </button>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setModalCliente({ open: true, modo: "crear", cliente: null })}
+                  className="rounded-xl bg-gradient-to-r from-violet-700 to-purple-700 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-violet-900/25 transition hover:from-violet-600 hover:to-purple-600"
+                >
+                  + Nuevo cliente
+                </button>
+              </div>
             </div>
           </div>
         </header>

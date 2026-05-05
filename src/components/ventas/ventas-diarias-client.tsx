@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  eliminarVenta,
   listarClientes,
   listarProductosActivos,
   listarVentasPorFecha,
@@ -10,7 +11,9 @@ import {
   type VentaFila,
 } from "@/app/(app)/ventas-diarias/actions";
 import { formatArs } from "@/lib/format";
+import { ConfirmModal } from "@/components/confirm-modal";
 import { NuevaVentaModal } from "./nueva-venta-modal";
+import { EditarVentaModal } from "./editar-venta-modal";
 
 function fechaLocalHoy(): string {
   const d = new Date();
@@ -30,8 +33,10 @@ function sumarDias(fechaIso: string, dias: number): string {
 }
 
 function formatearFechaEtiqueta(fechaIso: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaIso)) return "";
   const [y, m, d] = fechaIso.split("-").map(Number);
   const dt = new Date(y, m - 1, d);
+  if (isNaN(dt.getTime())) return "";
   return new Intl.DateTimeFormat("es-AR", {
     weekday: "long",
     day: "numeric",
@@ -59,6 +64,25 @@ export function VentasDiariasClient() {
 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [filtroOrigen, setFiltroOrigen] = useState<"todos" | "puesto" | "galpon">("todos");
+
+  const [ventaAEditar, setVentaAEditar] = useState<VentaFila | null>(null);
+  const [ventaAEliminar, setVentaAEliminar] = useState<VentaFila | null>(null);
+  const [eliminando, setEliminando] = useState(false);
+  const [errorEliminar, setErrorEliminar] = useState<string | null>(null);
+
+  async function handleEliminarConfirm() {
+    if (!ventaAEliminar) return;
+    setEliminando(true);
+    setErrorEliminar(null);
+    const res = await eliminarVenta(ventaAEliminar.id);
+    setEliminando(false);
+    if (!res.ok) {
+      setErrorEliminar(res.error);
+      return;
+    }
+    setVentaAEliminar(null);
+    void cargarVentas();
+  }
 
   const cargarVentas = useCallback(async () => {
     setCargandoVentas(true);
@@ -281,24 +305,25 @@ export function VentasDiariasClient() {
                 <th className="px-4 py-3 text-right font-semibold">Cajas</th>
                 <th className="hidden sm:table-cell px-4 py-3 text-right font-semibold">Precio / caja</th>
                 <th className="px-4 py-3 text-right font-semibold">Total</th>
+                <th className="px-4 py-3 text-right font-semibold">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {cargandoVentas ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-violet-600">
+                  <td colSpan={9} className="px-4 py-10 text-center text-violet-600">
                     Cargando ventas…
                   </td>
                 </tr>
               ) : errorVentas ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-red-700">
+                  <td colSpan={9} className="px-4 py-10 text-center text-red-700">
                     {errorVentas}
                   </td>
                 </tr>
               ) : ventasFiltradas.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-violet-600">
+                  <td colSpan={9} className="px-4 py-10 text-center text-violet-600">
                     {ventas.length === 0
                       ? "No hay ventas registradas para este día."
                       : "No hay ventas del origen seleccionado para este día."}
@@ -308,7 +333,7 @@ export function VentasDiariasClient() {
                 ventasFiltradas.map((v) => (
                   <tr
                     key={v.id}
-                    className="border-b border-violet-100/90 transition hover:bg-violet-50/50"
+                    className="border-b border-violet-100/90 transition hover:bg-violet-50/50 align-middle"
                   >
                     <td className="hidden sm:table-cell whitespace-nowrap px-4 py-3 font-mono text-violet-800">
                       {formatearHora(v.created_at)}
@@ -348,6 +373,24 @@ export function VentasDiariasClient() {
                     <td className="px-4 py-3 text-right font-medium tabular-nums text-violet-950">
                       {formatArs(v.total)}
                     </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setVentaAEditar(v)}
+                          className="rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-xs font-medium text-violet-700 transition hover:bg-violet-50"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setErrorEliminar(null); setVentaAEliminar(v); }}
+                          className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}
@@ -363,6 +406,27 @@ export function VentasDiariasClient() {
         clientes={clientes}
         productos={productos}
         onGuardado={() => void cargarVentas()}
+      />
+
+      <EditarVentaModal
+        key={ventaAEditar?.id ?? "none"}
+        open={ventaAEditar !== null}
+        onClose={() => setVentaAEditar(null)}
+        venta={ventaAEditar}
+        clientes={clientes}
+        productos={productos}
+        onGuardado={() => void cargarVentas()}
+      />
+
+      <ConfirmModal
+        open={ventaAEliminar !== null}
+        mensaje="¿Eliminar esta venta?"
+        detalle={ventaAEliminar ? `${ventaAEliminar.producto_nombre} · ${ventaAEliminar.cantidad_cajas} cajas · ${formatArs(ventaAEliminar.total)}` : undefined}
+        labelConfirmar="Eliminar"
+        cargando={eliminando}
+        error={errorEliminar}
+        onConfirmar={handleEliminarConfirm}
+        onCancelar={() => setVentaAEliminar(null)}
       />
     </div>
   );

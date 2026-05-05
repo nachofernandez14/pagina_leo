@@ -359,3 +359,70 @@ export async function listarCobrosPorFecha(
   return { ok: true, cobros };
 }
 
+// ─── Purgar clientes inactivos ────────────────────────────────────────────────
+
+export type PurgarResult = {
+  clientes: number;
+  ventas: number;
+  cobros: number;
+};
+
+export async function purgarClientesInactivos(): Promise<
+  { ok: true; resultado: PurgarResult } | { ok: false; error: string }
+> {
+  const supabase = await createClient();
+
+  // 1. Obtener IDs de clientes inactivos
+  const { data: inactivos, error: errFetch } = await supabase
+    .from("clientes")
+    .select("id")
+    .eq("activo", false);
+
+  if (errFetch) return { ok: false, error: errFetch.message };
+  if (!inactivos || inactivos.length === 0) {
+    return { ok: true, resultado: { clientes: 0, ventas: 0, cobros: 0 } };
+  }
+
+  const ids = inactivos.map((c) => c.id);
+
+  // 2. Contar ventas y cobros antes de borrar
+  const [{ count: cntVentas }, { count: cntCobros }] = await Promise.all([
+    supabase.from("ventas").select("id", { count: "exact", head: true }).in("cliente_id", ids),
+    supabase.from("cobros").select("id", { count: "exact", head: true }).in("cliente_id", ids),
+  ]);
+
+  // 3. Borrar cobros
+  const { error: errCobros } = await supabase
+    .from("cobros")
+    .delete()
+    .in("cliente_id", ids);
+  if (errCobros) return { ok: false, error: `Error borrando cobros: ${errCobros.message}` };
+
+  // 4. Borrar ventas de esos clientes
+  const { error: errVentas } = await supabase
+    .from("ventas")
+    .delete()
+    .in("cliente_id", ids);
+  if (errVentas) return { ok: false, error: `Error borrando ventas: ${errVentas.message}` };
+
+  // 5. Borrar los clientes inactivos
+  const { error: errClientes } = await supabase
+    .from("clientes")
+    .delete()
+    .eq("activo", false);
+  if (errClientes) return { ok: false, error: `Error borrando clientes: ${errClientes.message}` };
+
+  revalidateClientes();
+  revalidatePath("/ventas-diarias");
+  revalidatePath("/pagos-diarios");
+
+  return {
+    ok: true,
+    resultado: {
+      clientes: ids.length,
+      ventas: cntVentas ?? 0,
+      cobros: cntCobros ?? 0,
+    },
+  };
+}
+

@@ -251,29 +251,22 @@ export function AppSidebar({ userEmail }: AppSidebarProps) {
         </button>
       )}
 
-      {/* Backup + Restaurar + Logout */}
+      {/* Configuración + Logout */}
       <div className="border-t border-white/15 p-2 flex flex-col gap-1">
         {collapsed && !isMobile ? (
           <>
-            <a
-              href="/api/backup"
-              download
-              title="Exportar backup"
-              className="flex w-full items-center justify-center rounded-lg py-2.5 text-violet-200/80 transition hover:bg-white/10 hover:text-white"
+            <Link
+              href="/configuracion"
+              title="Configuración"
+              className={`flex w-full items-center justify-center rounded-lg py-2.5 transition hover:bg-white/10 hover:text-white ${
+                pathname === "/configuracion" ? "bg-white/20 text-white" : "text-violet-200/80"
+              }`}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
-              </svg>
-            </a>
-            <a
-              href="/restaurar"
-              title="Restaurar backup"
-              className="flex w-full items-center justify-center rounded-lg py-2.5 text-violet-200/80 transition hover:bg-white/10 hover:text-white"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12" />
-              </svg>
-            </a>
+              <Icon
+                path="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                path2="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+            </Link>
             <button
               type="button"
               onClick={handleLogout}
@@ -285,25 +278,18 @@ export function AppSidebar({ userEmail }: AppSidebarProps) {
           </>
         ) : (
           <>
-            <a
-              href="/api/backup"
-              download
-              className="flex items-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-xs font-medium text-violet-200/80 transition hover:bg-white/10 hover:text-white"
+            <Link
+              href="/configuracion"
+              className={`flex items-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-xs font-medium transition hover:bg-white/10 hover:text-white ${
+                pathname === "/configuracion" ? "bg-white/20 text-white" : "text-violet-200/80"
+              }`}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
-              </svg>
-              <span>Exportar backup</span>
-            </a>
-            <a
-              href="/restaurar"
-              className="flex items-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-xs font-medium text-violet-200/80 transition hover:bg-white/10 hover:text-white"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12" />
-              </svg>
-              <span>Restaurar backup</span>
-            </a>
+              <Icon
+                path="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                path2="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+              <span>Configuración</span>
+            </Link>
             <LogoutButton />
           </>
         )}
