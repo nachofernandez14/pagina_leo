@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   actualizarPago,
   crearPago,
@@ -62,8 +62,10 @@ export function PagoFormModal({
   const [proveedorId, setProveedorId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
+    submittingRef.current = false;
     if (!open) return;
     setError(null);
     if (modo === "editar" && pago) {
@@ -101,7 +103,9 @@ export function PagoFormModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submittingRef.current) return;
     setError(null);
+    submittingRef.current = true;
     setLoading(true);
 
     const input: PagoInput = {
@@ -119,6 +123,7 @@ export function PagoFormModal({
         ? await crearPago(input)
         : await actualizarPago({ ...input, id: pago!.id });
 
+    submittingRef.current = false;
     setLoading(false);
     if (!res.ok) {
       setError(res.error);

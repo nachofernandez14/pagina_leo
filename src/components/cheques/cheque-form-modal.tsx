@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   actualizarCheque,
   crearCheque,
@@ -71,6 +71,7 @@ export function ChequeFormModal({
   const [campos, setCampos] = useState(CAMPO_VACIO);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const submittingRef = useRef(false);
   const [clientes, setClientes] = useState<{ id: string; nombre: string }[]>([]);
   const [proveedores, setProveedores] = useState<{ id: string; nombre: string }[]>([]);
   const [personasCampo, setPersonasCampo] = useState<{ id: string; nombre: string }[]>([]);
@@ -125,6 +126,7 @@ export function ChequeFormModal({
   }
 
   useEffect(() => {
+    submittingRef.current = false;
     if (!open) return;
     setError(null);
     if (modo === "editar" && cheque) {
@@ -167,6 +169,7 @@ export function ChequeFormModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submittingRef.current) return;
     setError(null);
 
     // Validaciones de formato previas al server action
@@ -179,6 +182,7 @@ export function ChequeFormModal({
       return;
     }
 
+    submittingRef.current = true;
     setLoading(true);
 
     const input: ChequeInput = {
@@ -206,6 +210,7 @@ export function ChequeFormModal({
         ? await crearCheque(input)
         : await actualizarCheque({ ...input, id: cheque!.id });
 
+    submittingRef.current = false;
     setLoading(false);
     if (!res.ok) {
       setError(res.error);

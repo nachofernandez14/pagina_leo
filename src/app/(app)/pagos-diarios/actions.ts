@@ -45,25 +45,25 @@ export async function listarPagosPorFecha(
   }
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("pagos")
-    .select(
-      `
-      id,
-      fecha,
-      descripcion,
-      movimiento,
-      total,
-      cheque_id,
-      proveedor_id,
-      notas,
-      created_at,
-      cheques ( numero_cheque ),
-      proveedores ( nombre )
-    `,
-    )
-    .eq("fecha", fecha)
-    .order("created_at", { ascending: false });
+  const [resPagos, resCampo] = await Promise.all([
+    supabase
+      .from("pagos")
+      .select(
+        `id, fecha, descripcion, movimiento, total, cheque_id, proveedor_id, notas, created_at,
+         cheques ( numero_cheque ), proveedores ( nombre )`,
+      )
+      .eq("fecha", fecha)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("pagos_campo")
+      .select(`id, fecha, movimiento, monto, cheque_id, notas, created_at,
+               personas_campo ( nombre ), cheques ( numero_cheque )`)
+      .eq("fecha", fecha)
+      .order("created_at", { ascending: false }),
+  ]);
+
+  const { data, error } = resPagos;
+  const { data: dataCampo } = resCampo;
 
   if (error) {
     return {
@@ -94,13 +94,6 @@ export async function listarPagosPorFecha(
     };
   });
 
-  // También traer pagos de campo (arrendatarios) para ese día
-  const { data: dataCampo } = await supabase
-    .from("pagos_campo")
-    .select(`id, fecha, movimiento, monto, cheque_id, notas, created_at, personas_campo ( nombre ), cheques ( numero_cheque )`)
-    .eq("fecha", fecha)
-    .order("created_at", { ascending: false });
-
   const pagosCampo: PagoFila[] = (dataCampo ?? []).map((row) => {
     const personaObj = Array.isArray(row.personas_campo) ? row.personas_campo[0] : row.personas_campo;
     const chqObj = Array.isArray(row.cheques) ? row.cheques[0] : row.cheques;
@@ -121,9 +114,18 @@ export async function listarPagosPorFecha(
     };
   });
 
-  const pagos = [...pagosBase, ...pagosCampo].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-  );
+  // Ambas queries ya vienen ordenadas por created_at DESC, merge manual
+  const pagos: PagoFila[] = [];
+  let i = 0, j = 0;
+  while (i < pagosBase.length && j < pagosCampo.length) {
+    if (pagosBase[i].created_at >= pagosCampo[j].created_at) {
+      pagos.push(pagosBase[i++]);
+    } else {
+      pagos.push(pagosCampo[j++]);
+    }
+  }
+  while (i < pagosBase.length) pagos.push(pagosBase[i++]);
+  while (j < pagosCampo.length) pagos.push(pagosCampo[j++]);
 
   return { ok: true, pagos };
 }

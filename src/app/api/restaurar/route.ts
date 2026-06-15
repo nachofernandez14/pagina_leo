@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit, auditLog } from "@/lib/security";
+import { timingSafeEqual } from "crypto";
 
-// Orden de eliminación: de hijos a padres (respeta FK)
 const DELETE_ORDER = [
   "stock_puesto",
   "pagos_campo",
@@ -18,7 +19,6 @@ const DELETE_ORDER = [
   "embalajes",
 ] as const;
 
-// Orden de inserción: de padres a hijos (respeta FK)
 const INSERT_ORDER = [
   "embalajes",
   "productos",
@@ -43,7 +43,6 @@ type FilaResultado = {
 };
 
 export async function POST(req: NextRequest) {
-  // 1. Verificar auth
   const supabase = await createClient();
   const {
     data: { user },
@@ -52,9 +51,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  // 2. Verificar contraseña
+  const email = user.email ?? user.id;
+
+  // Rate limiting: máx 1 restauración cada 5 minutos por usuario
+  if (!checkRateLimit(`restore:${email}`, 1, 300_000)) {
+    auditLog(email, "RESTORE_DENIED", "Rate limit excedido");
+    return NextResponse.json(
+      { error: "Solo podés restaurar un backup cada 5 minutos." },
+      { status: 429 },
+    );
+  }
+
   const expectedPassword = process.env.RESTAURAR_PASSWORD;
   if (!expectedPassword) {
+    auditLog(email, "RESTORE_DENIED", "RESTAURAR_PASSWORD no configurada");
     return NextResponse.json(
       {
         error:
@@ -63,12 +73,16 @@ export async function POST(req: NextRequest) {
       { status: 500 },
     );
   }
-  const providedPassword = req.headers.get("x-restore-password");
-  if (providedPassword !== expectedPassword) {
+
+  const providedPassword = req.headers.get("x-restore-password") ?? "";
+  const pwBuffer = Buffer.from(providedPassword);
+  const expectedBuffer = Buffer.from(expectedPassword);
+
+  if (pwBuffer.length !== expectedBuffer.length || !timingSafeEqual(pwBuffer, expectedBuffer)) {
+    auditLog(email, "RESTORE_DENIED", "Contraseña incorrecta");
     return NextResponse.json({ error: "Contraseña incorrecta" }, { status: 403 });
   }
 
-  // 3. Parsear el backup
   let datos: Record<string, unknown[]>;
   try {
     const body = (await req.json()) as { datos?: Record<string, unknown[]> };
@@ -85,20 +99,15 @@ export async function POST(req: NextRequest) {
 
   const resumen: FilaResultado[] = [];
 
-  // 4. Fase 1 — Eliminar todos los datos en orden inverso de FK
   for (const tabla of DELETE_ORDER) {
     const { error } = await supabase.from(tabla).delete().not("id", "is", null);
     if (error) {
-      // Registrar el error pero continuar (podría ser tabla vacía o política RLS)
       resumen.push({ tabla, insertados: 0, error_eliminacion: error.message });
     }
   }
 
-  // 5. Fase 2 — Insertar desde el backup en orden FK
   for (const tabla of INSERT_ORDER) {
     const rows = datos[tabla];
-
-    // Tabla existente en el resumen de error de eliminación
     const filaExistente = resumen.find((r) => r.tabla === tabla);
 
     if (!rows || rows.length === 0) {
@@ -123,6 +132,9 @@ export async function POST(req: NextRequest) {
       }
     }
   }
+
+  const totalInsertados = resumen.reduce((s, r) => s + r.insertados, 0);
+  auditLog(email, "RESTORE_COMPLETE", `Restaurados ${totalInsertados} registros en ${resumen.length} tablas`);
 
   return NextResponse.json({ ok: true, resumen });
 }

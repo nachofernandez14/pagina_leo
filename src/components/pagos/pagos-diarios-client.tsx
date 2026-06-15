@@ -125,25 +125,17 @@ export function PagosDiariosClient() {
   useEffect(() => { void cargarPagos(); }, [cargarPagos]);
   useEffect(() => { void cargarCobros(); }, [cargarCobros]);
 
-  // Cheques en cartera (para modal de pagos)
+  // Cargar datos estáticos en paralelo (cheques, clientes, proveedores)
   useEffect(() => {
-    listarChequesEnCartera().then((res) => {
-      if (res.ok) setCheques(res.cheques);
-      else setErrorCheques(res.error);
-    });
-  }, []);
-
-  // Clientes activos (para modal de cobros)
-  useEffect(() => {
-    listarClientesActivos().then((res) => {
-      if (res.ok) setClientes(res.clientes);
-    });
-  }, []);
-
-  // Proveedores activos (para modal de pagos)
-  useEffect(() => {
-    listarProveedoresActivos().then((res) => {
-      if (res.ok) setProveedores(res.proveedores);
+    Promise.all([
+      listarChequesEnCartera(),
+      listarClientesActivos(),
+      listarProveedoresActivos(),
+    ]).then(([resCheques, resClientes, resProveedores]) => {
+      if (resCheques.ok) setCheques(resCheques.cheques);
+      else setErrorCheques(resCheques.error);
+      if (resClientes.ok) setClientes(resClientes.clientes);
+      if (resProveedores.ok) setProveedores(resProveedores.proveedores);
     });
   }, []);
 

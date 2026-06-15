@@ -198,6 +198,17 @@ export async function crearCheque(
       : "en_cartera";
 
   const supabase = await createClient();
+
+  // Evitar duplicados: mismo número + mismo banco
+  const { count: dupCount } = await supabase
+    .from("cheques")
+    .select("id", { count: "exact", head: true })
+    .eq("numero_cheque", numero)
+    .eq("banco", banco);
+  if (dupCount && dupCount > 0) {
+    return { ok: false, error: `Ya existe un cheque N° ${numero} del banco ${banco}.` };
+  }
+
   const { data: inserted, error } = await supabase
     .from("cheques")
     .insert({

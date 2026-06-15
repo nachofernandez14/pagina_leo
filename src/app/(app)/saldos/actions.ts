@@ -86,8 +86,14 @@ export async function listarClientesConSaldo(): Promise<
       .select("id, nombre, telefono, notas, activo, created_at")
       .eq("activo", true)
       .order("nombre"),
-    supabase.from("ventas").select("cliente_id, total"),
-    supabase.from("cobros").select("cliente_id, monto"),
+    supabase
+      .from("ventas")
+      .select("cliente_id, ventas_sum:total.sum()")
+      .not("cliente_id", "is", null),
+    supabase
+      .from("cobros")
+      .select("cliente_id, cobros_sum:monto.sum()")
+      .not("cliente_id", "is", null),
   ]);
 
   if (errCli) return { ok: false, error: errCli.message };
@@ -110,22 +116,12 @@ export async function listarClientesConSaldo(): Promise<
     };
   }
 
-  const ventasPorCliente = new Map<string, number>();
-  for (const v of ventas ?? []) {
-    if (!v.cliente_id) continue;
-    ventasPorCliente.set(
-      v.cliente_id,
-      (ventasPorCliente.get(v.cliente_id) ?? 0) + Number(v.total),
-    );
-  }
-
-  const cobrosPorCliente = new Map<string, number>();
-  for (const c of cobros ?? []) {
-    cobrosPorCliente.set(
-      c.cliente_id,
-      (cobrosPorCliente.get(c.cliente_id) ?? 0) + Number(c.monto),
-    );
-  }
+  const ventasPorCliente = new Map<string, number>(
+    (ventas ?? []).map((v) => [v.cliente_id, Number(v.ventas_sum)]),
+  );
+  const cobrosPorCliente = new Map<string, number>(
+    (cobros ?? []).map((c) => [c.cliente_id, Number(c.cobros_sum)]),
+  );
 
   const result: ClienteConSaldo[] = (clientes ?? []).map((cli) => {
     const total_ventas = ventasPorCliente.get(cli.id) ?? 0;

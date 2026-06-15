@@ -14,29 +14,25 @@ export async function listarSaldoACobrar(): Promise<
     { data: ventas, error: errV },
     { data: cobros, error: errC },
   ] = await Promise.all([
-    supabase.from("ventas").select("cliente_id, total"),
-    supabase.from("cobros").select("cliente_id, monto"),
+    supabase
+      .from("ventas")
+      .select("cliente_id, ventas_sum:total.sum()")
+      .not("cliente_id", "is", null),
+    supabase
+      .from("cobros")
+      .select("cliente_id, cobros_sum:monto.sum()")
+      .not("cliente_id", "is", null),
   ]);
 
   if (errV) return { ok: false, error: errV.message };
   if (errC) return { ok: false, error: errC.message };
 
-  const ventasPorCliente = new Map<string, number>();
-  for (const v of ventas ?? []) {
-    if (!v.cliente_id) continue;
-    ventasPorCliente.set(
-      v.cliente_id,
-      (ventasPorCliente.get(v.cliente_id) ?? 0) + Number(v.total),
-    );
-  }
-
-  const cobrosPorCliente = new Map<string, number>();
-  for (const c of cobros ?? []) {
-    cobrosPorCliente.set(
-      c.cliente_id,
-      (cobrosPorCliente.get(c.cliente_id) ?? 0) + Number(c.monto),
-    );
-  }
+  const ventasPorCliente = new Map<string, number>(
+    (ventas ?? []).map((v) => [v.cliente_id, Number(v.ventas_sum)]),
+  );
+  const cobrosPorCliente = new Map<string, number>(
+    (cobros ?? []).map((c) => [c.cliente_id, Number(c.cobros_sum)]),
+  );
 
   let total = 0;
   for (const [clienteId, totalVentas] of ventasPorCliente) {
@@ -60,32 +56,25 @@ export async function listarSaldoAPagar(): Promise<
     { data: compras, error: errC },
     { data: pagos, error: errP },
   ] = await Promise.all([
-    supabase.from("compras").select("proveedor_id, monto"),
+    supabase
+      .from("compras")
+      .select("proveedor_id, compras_sum:monto.sum()")
+      .not("proveedor_id", "is", null),
     supabase
       .from("pagos")
-      .select("proveedor_id, total")
+      .select("proveedor_id, pagos_sum:total.sum()")
       .not("proveedor_id", "is", null),
   ]);
 
   if (errC) return { ok: false, error: errC.message };
   if (errP) return { ok: false, error: errP.message };
 
-  const comprasPorProveedor = new Map<string, number>();
-  for (const c of compras ?? []) {
-    comprasPorProveedor.set(
-      c.proveedor_id,
-      (comprasPorProveedor.get(c.proveedor_id) ?? 0) + Number(c.monto),
-    );
-  }
-
-  const pagosPorProveedor = new Map<string, number>();
-  for (const p of pagos ?? []) {
-    const pid = p.proveedor_id as string;
-    pagosPorProveedor.set(
-      pid,
-      (pagosPorProveedor.get(pid) ?? 0) + Number(p.total),
-    );
-  }
+  const comprasPorProveedor = new Map<string, number>(
+    (compras ?? []).map((c) => [c.proveedor_id, Number(c.compras_sum)]),
+  );
+  const pagosPorProveedor = new Map<string, number>(
+    (pagos ?? []).map((p) => [p.proveedor_id, Number(p.pagos_sum)]),
+  );
 
   let total = 0;
   for (const [provId, totalCompras] of comprasPorProveedor) {

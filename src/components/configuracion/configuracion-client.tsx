@@ -91,23 +91,92 @@ function SectionCard({
 // ─── Sección: Exportar backup ─────────────────────────────────────────────────
 
 function ExportarBackup() {
+  const [confirmando, setConfirmando] = useState(false);
+  const [descargando, setDescargando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleConfirmar() {
+    setDescargando(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/backup", {
+        headers: { "x-backup-confirm": "confirmed" },
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? `Error ${res.status}`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const disposition = res.headers.get("Content-Disposition") ?? "";
+      const match = disposition.match(/filename="?(.+?)"?$/);
+      a.download = match?.[1] ?? `backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setConfirmando(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error de red");
+    } finally {
+      setDescargando(false);
+    }
+  }
+
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <p className="text-sm text-violet-800">
-          Descargá un archivo <span className="font-mono font-semibold">.json</span> con todos los datos actuales de la base de datos.
-        </p>
-        <p className="mt-1 text-xs text-violet-500">
-          Incluye: clientes, ventas, cobros, proveedores, compras, pagos, productos, cheques, campo y más.
-        </p>
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-sm text-violet-800">
+            Descargá un archivo <span className="font-mono font-semibold">.json</span> con todos los datos actuales de la base de datos.
+          </p>
+          <p className="mt-1 text-xs text-violet-500">
+            Incluye: clientes, ventas, cobros, proveedores, compras, pagos, productos, cheques, campo y más.
+          </p>
+        </div>
+        {!confirmando ? (
+          <button
+            type="button"
+            onClick={() => { setError(null); setConfirmando(true); }}
+            className="shrink-0 rounded-xl bg-gradient-to-r from-violet-700 to-purple-700 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-violet-900/25 transition hover:from-violet-600 hover:to-purple-600"
+          >
+            Descargar backup
+          </button>
+        ) : null}
       </div>
-      <a
-        href="/api/backup"
-        download
-        className="shrink-0 rounded-xl bg-gradient-to-r from-violet-700 to-purple-700 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-violet-900/25 transition hover:from-violet-600 hover:to-purple-600"
-      >
-        Descargar backup
-      </a>
+
+      {error ? (
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
+      ) : null}
+
+      {confirmando ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4">
+          <p className="text-sm font-semibold text-amber-900">¿Descargar backup completo?</p>
+          <p className="mt-1 text-xs text-amber-700">
+            Se descargará un archivo JSON con todos los datos del sistema (clientes, ventas, cheques, pagos, etc.).
+          </p>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => { setConfirmando(false); setError(null); }}
+              disabled={descargando}
+              className="rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              disabled={descargando}
+              onClick={handleConfirmar}
+              className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+            >
+              {descargando ? "Descargando…" : "Confirmar descarga"}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
