@@ -88,11 +88,11 @@ export async function listarClientesConSaldo(): Promise<
       .order("nombre"),
     supabase
       .from("ventas")
-      .select("cliente_id, ventas_sum:total.sum()")
+      .select("cliente_id, total")
       .not("cliente_id", "is", null),
     supabase
       .from("cobros")
-      .select("cliente_id, cobros_sum:monto.sum()")
+      .select("cliente_id, monto")
       .not("cliente_id", "is", null),
   ]);
 
@@ -116,12 +116,16 @@ export async function listarClientesConSaldo(): Promise<
     };
   }
 
-  const ventasPorCliente = new Map<string, number>(
-    (ventas ?? []).map((v) => [v.cliente_id, Number(v.ventas_sum)]),
-  );
-  const cobrosPorCliente = new Map<string, number>(
-    (cobros ?? []).map((c) => [c.cliente_id, Number(c.cobros_sum)]),
-  );
+  const ventasPorCliente = new Map<string, number>();
+  for (const v of ventas ?? []) {
+    const key = v.cliente_id;
+    ventasPorCliente.set(key, (ventasPorCliente.get(key) ?? 0) + Number(v.total));
+  }
+  const cobrosPorCliente = new Map<string, number>();
+  for (const c of cobros ?? []) {
+    const key = c.cliente_id;
+    cobrosPorCliente.set(key, (cobrosPorCliente.get(key) ?? 0) + Number(c.monto));
+  }
 
   const result: ClienteConSaldo[] = (clientes ?? []).map((cli) => {
     const total_ventas = ventasPorCliente.get(cli.id) ?? 0;

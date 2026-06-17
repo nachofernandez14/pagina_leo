@@ -16,23 +16,27 @@ export async function listarSaldoACobrar(): Promise<
   ] = await Promise.all([
     supabase
       .from("ventas")
-      .select("cliente_id, ventas_sum:total.sum()")
+      .select("cliente_id, total")
       .not("cliente_id", "is", null),
     supabase
       .from("cobros")
-      .select("cliente_id, cobros_sum:monto.sum()")
+      .select("cliente_id, monto")
       .not("cliente_id", "is", null),
   ]);
 
   if (errV) return { ok: false, error: errV.message };
   if (errC) return { ok: false, error: errC.message };
 
-  const ventasPorCliente = new Map<string, number>(
-    (ventas ?? []).map((v) => [v.cliente_id, Number(v.ventas_sum)]),
-  );
-  const cobrosPorCliente = new Map<string, number>(
-    (cobros ?? []).map((c) => [c.cliente_id, Number(c.cobros_sum)]),
-  );
+  const ventasPorCliente = new Map<string, number>();
+  for (const v of ventas ?? []) {
+    const key = v.cliente_id;
+    ventasPorCliente.set(key, (ventasPorCliente.get(key) ?? 0) + Number(v.total));
+  }
+  const cobrosPorCliente = new Map<string, number>();
+  for (const c of cobros ?? []) {
+    const key = c.cliente_id;
+    cobrosPorCliente.set(key, (cobrosPorCliente.get(key) ?? 0) + Number(c.monto));
+  }
 
   let total = 0;
   for (const [clienteId, totalVentas] of ventasPorCliente) {
@@ -58,23 +62,27 @@ export async function listarSaldoAPagar(): Promise<
   ] = await Promise.all([
     supabase
       .from("compras")
-      .select("proveedor_id, compras_sum:monto.sum()")
+      .select("proveedor_id, monto")
       .not("proveedor_id", "is", null),
     supabase
       .from("pagos")
-      .select("proveedor_id, pagos_sum:total.sum()")
+      .select("proveedor_id, total")
       .not("proveedor_id", "is", null),
   ]);
 
   if (errC) return { ok: false, error: errC.message };
   if (errP) return { ok: false, error: errP.message };
 
-  const comprasPorProveedor = new Map<string, number>(
-    (compras ?? []).map((c) => [c.proveedor_id, Number(c.compras_sum)]),
-  );
-  const pagosPorProveedor = new Map<string, number>(
-    (pagos ?? []).map((p) => [p.proveedor_id, Number(p.pagos_sum)]),
-  );
+  const comprasPorProveedor = new Map<string, number>();
+  for (const c of compras ?? []) {
+    const key = c.proveedor_id;
+    comprasPorProveedor.set(key, (comprasPorProveedor.get(key) ?? 0) + Number(c.monto));
+  }
+  const pagosPorProveedor = new Map<string, number>();
+  for (const p of pagos ?? []) {
+    const key = p.proveedor_id;
+    pagosPorProveedor.set(key, (pagosPorProveedor.get(key) ?? 0) + Number(p.total));
+  }
 
   let total = 0;
   for (const [provId, totalCompras] of comprasPorProveedor) {
